@@ -5,9 +5,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 
 import { Repository } from 'typeorm';
+import { UserResponseDto } from './dto/user-response.dto';
 
 import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './entities/user.entity';
+
+import { UserMapper } from './mappers/user.mapper';
 
 @Injectable()
 export class UsersService {
@@ -16,7 +19,7 @@ export class UsersService {
     private readonly usersRepository: Repository<User>,
   ) {}
 
-  async create(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
+  async create(createUserDto: CreateUserDto): Promise<UserResponseDto> {
     const existingUser = await this.usersRepository.findOne({
       where: {
         email: createUserDto.email,
@@ -36,7 +39,6 @@ export class UsersService {
 
     const savedUser = await this.usersRepository.save(user);
 
-    const { password, ...userWithoutPassword } = savedUser;
-    return userWithoutPassword;
+    return UserMapper.toResponse(savedUser);
   }
 }
