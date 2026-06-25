@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from './users/users.module';
 import { RoomsModule } from './rooms/rooms.module';
+import { ReservationsModule } from './reservations/reservations.module';
 
 @Module({
   imports: [
@@ -27,6 +28,8 @@ import { RoomsModule } from './rooms/rooms.module';
     UsersModule,
 
     RoomsModule,
+
+    ReservationsModule,
   ],
   controllers: [],
   providers: [],
