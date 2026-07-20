@@ -118,6 +118,7 @@ export class ReservationsService {
       where: {
         id: reservationId,
       },
+      relations: ['user'],
     });
 
     if (!reservation) {
