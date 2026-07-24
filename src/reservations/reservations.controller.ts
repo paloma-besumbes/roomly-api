@@ -8,6 +8,7 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
+import type { Request as ExpressRequest } from 'express';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -26,7 +27,7 @@ export class ReservationsController {
   create(
     @Body() createReservationDto: CreateReservationDto,
     @Request()
-    req: Request & {
+    req: ExpressRequest & {
       user: {
         userId: string;
         email: string;
@@ -44,7 +45,7 @@ export class ReservationsController {
   @UseGuards(JwtAuthGuard)
   getMyReservations(
     @Request()
-    req: Request & {
+    req: ExpressRequest & {
       user: {
         userId: string;
         email: string;
@@ -60,7 +61,7 @@ export class ReservationsController {
   remove(
     @Param('id') reservationId: string,
     @Request()
-    req: Request & {
+    req: ExpressRequest & {
       user: {
         userId: string;
         email: string;

@@ -9,12 +9,12 @@ export class RoomsController {
   constructor(private readonly roomsService: RoomsService) {}
 
   @Get()
-  async findAll(@Query() filters: FilterRoomsDto) {
-    return await this.roomsService.findAll(filters);
+  findAll(@Query() filters: FilterRoomsDto) {
+    return this.roomsService.findAll(filters);
   }
 
   @Post()
-  async create(@Body() createRoomDto: CreateRoomDto) {
-    return await this.roomsService.create(createRoomDto);
+  create(@Body() createRoomDto: CreateRoomDto) {
+    return this.roomsService.create(createRoomDto);
   }
 }

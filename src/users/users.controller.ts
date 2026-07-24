@@ -20,12 +20,12 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard)
   @Get()
-  async findAll() {
-    return await this.usersService.findAll();
+  findAll() {
+    return this.usersService.findAll();
   }
 
   @Post()
-  async create(@Body() createUserDto: CreateUserDto): Promise<UserResponseDto> {
-    return await this.usersService.create(createUserDto);
+  create(@Body() createUserDto: CreateUserDto): Promise<UserResponseDto> {
+    return this.usersService.create(createUserDto);
   }
 }
