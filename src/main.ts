@@ -7,8 +7,10 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
   app.enableCors({
-    origin: 'http://localhost:5173',
+    origin:
+      configService.get<string>('FRONTEND_URL') ?? 'http://localhost:5173',
   });
 
   app.setGlobalPrefix('api');
@@ -40,11 +42,9 @@ async function bootstrap() {
 
   SwaggerModule.setup('api/docs', app, swaggerDocument);
 
-  const configService = app.get(ConfigService);
-
   const port = configService.get<number>('PORT') ?? 3000;
 
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 }
 
-bootstrap();
+void bootstrap();
