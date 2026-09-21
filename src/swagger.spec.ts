@@ -1,0 +1,316 @@
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtModule, JwtService } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import type { OpenAPIObject } from '@nestjs/swagger';
+import { Test } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import request from 'supertest';
+import type { App } from 'supertest/types';
+
+import { createMockReservation } from '../test/factories/reservation.factory';
+import { createMockRoom } from '../test/factories/room.factory';
+import { createMockUser } from '../test/factories/user.factory';
+import { AuthController } from './auth/auth.controller';
+import { AuthService } from './auth/auth.service';
+import { JwtStrategy } from './auth/strategies/jwt.strategy';
+import { ReservationMapper } from './reservations/mappers/reservation.mapper';
+import { ReservationsController } from './reservations/reservations.controller';
+import { ReservationsService } from './reservations/reservations.service';
+import { RoomsController } from './rooms/rooms.controller';
+import { RoomsService } from './rooms/rooms.service';
+import { User } from './users/entities/user.entity';
+import { UsersController } from './users/users.controller';
+import { UsersService } from './users/users.service';
+
+describe('Swagger response contracts', () => {
+  let app: INestApplication<App>;
+  let document: OpenAPIObject;
+  let token: string;
+  const secret = 'swagger-contract-test-secret';
+  const user = createMockUser({
+    id: '550e8400-e29b-41d4-a716-446655440001',
+  });
+  const room = createMockRoom({
+    id: '550e8400-e29b-41d4-a716-446655440002',
+  });
+  const reservation = ReservationMapper.toResponseDto(
+    createMockReservation({
+      id: '550e8400-e29b-41d4-a716-446655440003',
+      user,
+      room,
+    }),
+  );
+
+  beforeAll(async () => {
+    const module = await Test.createTestingModule({
+      imports: [PassportModule, JwtModule.register({ secret })],
+      controllers: [
+        UsersController,
+        AuthController,
+        RoomsController,
+        ReservationsController,
+      ],
+      providers: [
+        JwtStrategy,
+        {
+          provide: ConfigService,
+          useValue: new ConfigService({ JWT_SECRET: secret }),
+        },
+        UsersService,
+        {
+          provide: getRepositoryToken(User),
+          useValue: { find: jest.fn().mockResolvedValue([user]) },
+        },
+        {
+          provide: AuthService,
+          useValue: {
+            login: jest.fn().mockResolvedValue({ accessToken: 'test-token' }),
+          },
+        },
+        {
+          provide: RoomsService,
+          useValue: {
+            findAll: jest.fn().mockResolvedValue([room]),
+            create: jest.fn().mockResolvedValue(room),
+          },
+        },
+        {
+          provide: ReservationsService,
+          useValue: {
+            create: jest.fn().mockResolvedValue(reservation),
+            findMyReservations: jest.fn().mockResolvedValue([reservation]),
+            remove: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+      ],
+    }).compile();
+
+    app = module.createNestApplication();
+    app.setGlobalPrefix('api');
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
+    await app.init();
+    // Match the named bearer scheme configured in main.ts.
+    const config = new DocumentBuilder()
+      .addBearerAuth(
+        { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        'JWT-auth',
+      )
+      .build();
+    document = SwaggerModule.createDocument(app, config);
+    token = await module.get(JwtService).signAsync({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    });
+  });
+
+  afterAll(async () => {
+    await app?.close();
+  });
+
+  function schema(name: string) {
+    const definition = document.components!.schemas![name];
+    if ('$ref' in definition) {
+      throw new Error(`Expected an inline schema for ${name}`);
+    }
+    return definition;
+  }
+
+  function responseSchema(
+    path: string,
+    method: 'get' | 'post',
+    status: number,
+  ) {
+    const response = document.paths[path][method]!.responses[status];
+    if (!response || '$ref' in response) {
+      throw new Error(`Expected an inline response for ${method} ${path}`);
+    }
+    return response.content!['application/json'].schema;
+  }
+
+  function expectFields(name: string, body: object) {
+    expect(Object.keys(schema(name).properties!).sort()).toEqual(
+      Object.keys(body).sort(),
+    );
+    expect([...schema(name).required!].sort()).toEqual(
+      Object.keys(body).sort(),
+    );
+  }
+
+  it('uses the registered bearer scheme only on protected operations', () => {
+    expect(document.components!.securitySchemes!['JWT-auth']).toMatchObject({
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+    });
+    for (const [path, method] of [
+      ['/api/users/me', 'get'],
+      ['/api/users', 'get'],
+      ['/api/reservations', 'post'],
+      ['/api/reservations/me', 'get'],
+      ['/api/reservations/{id}', 'delete'],
+    ] as const) {
+      expect(document.paths[path][method]!.security).toEqual([
+        { 'JWT-auth': [] },
+      ]);
+      expect(document.paths[path][method]!.responses).toHaveProperty('401');
+    }
+    for (const [path, method] of [
+      ['/api/users', 'post'],
+      ['/api/auth/login', 'post'],
+      ['/api/rooms', 'get'],
+      ['/api/rooms', 'post'],
+    ] as const) {
+      expect(document.paths[path][method]!.security).toBeUndefined();
+    }
+  });
+
+  it('documents the JWT identity actually returned by the profile route', async () => {
+    const identity = { userId: user.id, email: user.email, role: user.role };
+    await request(app.getHttpServer())
+      .get('/api/users/me')
+      .auth(token, { type: 'bearer' })
+      .expect(200, identity);
+    expect(responseSchema('/api/users/me', 'get', 200)).toEqual({
+      $ref: '#/components/schemas/UserProfileResponseDto',
+    });
+    expectFields('UserProfileResponseDto', identity);
+  });
+
+  it('documents public user responses without password hashes', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/users')
+      .auth(token, { type: 'bearer' })
+      .expect(200);
+    const users = response.body as Record<string, unknown>[];
+    expect(users).toHaveLength(1);
+    expect(users[0]).not.toHaveProperty('password');
+    expectFields('UserResponseDto', users[0]);
+    expect(responseSchema('/api/users', 'get', 200)).toEqual({
+      type: 'array',
+      items: { $ref: '#/components/schemas/UserResponseDto' },
+    });
+    expect(responseSchema('/api/users', 'post', 201)).toEqual({
+      $ref: '#/components/schemas/UserResponseDto',
+    });
+  });
+
+  it('documents the existing 201 login response and token body', async () => {
+    const body = { accessToken: 'test-token' };
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: user.email, password: 'secret123' })
+      .expect(201, body);
+    expect(
+      document.paths['/api/auth/login'].post!.responses,
+    ).not.toHaveProperty('200');
+    expect(responseSchema('/api/auth/login', 'post', 201)).toEqual({
+      $ref: '#/components/schemas/LoginResponseDto',
+    });
+    expectFields('LoginResponseDto', body);
+  });
+
+  it('documents complete room schemas for public listing and creation', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/rooms')
+      .expect(200);
+    const rooms = response.body as Record<string, unknown>[];
+    expectFields('RoomResponseDto', rooms[0]);
+    expect(schema('RoomResponseDto').properties).toMatchObject({
+      capacity: { type: 'integer' },
+      createdAt: { type: 'string', format: 'date-time' },
+      hasProjector: { type: 'boolean' },
+      hasWhiteboard: { type: 'boolean' },
+    });
+    await request(app.getHttpServer())
+      .post('/api/rooms')
+      .send({
+        name: room.name,
+        description: room.description,
+        capacity: room.capacity,
+        hasProjector: room.hasProjector,
+        hasWhiteboard: room.hasWhiteboard,
+      })
+      .expect(201, rooms[0]);
+    expect(responseSchema('/api/rooms', 'get', 200)).toEqual({
+      type: 'array',
+      items: { $ref: '#/components/schemas/RoomResponseDto' },
+    });
+    expect(responseSchema('/api/rooms', 'post', 201)).toEqual({
+      $ref: '#/components/schemas/RoomResponseDto',
+    });
+  });
+
+  it('documents the reservation mapper fields including nested schemas', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/reservations/me')
+      .auth(token, { type: 'bearer' })
+      .expect(200);
+    const reservations = response.body as Record<string, unknown>[];
+    expectFields('ReservationResponseDto', reservations[0]);
+    expectFields('ReservationRoomResponseDto', reservation.room);
+    expectFields('ReservationUserResponseDto', reservation.user);
+    expect(schema('ReservationResponseDto').properties).toMatchObject({
+      room: {
+        allOf: [{ $ref: '#/components/schemas/ReservationRoomResponseDto' }],
+      },
+      user: {
+        allOf: [{ $ref: '#/components/schemas/ReservationUserResponseDto' }],
+      },
+    });
+    await request(app.getHttpServer())
+      .post('/api/reservations')
+      .auth(token, { type: 'bearer' })
+      .send({
+        roomId: room.id,
+        startTime: reservation.startTime.toISOString(),
+        endTime: reservation.endTime.toISOString(),
+      })
+      .expect(201, reservations[0]);
+    expect(responseSchema('/api/reservations', 'post', 201)).toEqual({
+      $ref: '#/components/schemas/ReservationResponseDto',
+    });
+    expect(responseSchema('/api/reservations/me', 'get', 200)).toEqual({
+      type: 'array',
+      items: { $ref: '#/components/schemas/ReservationResponseDto' },
+    });
+  });
+
+  it('documents deletion as 200 with no response body', async () => {
+    const response = await request(app.getHttpServer())
+      .delete(`/api/reservations/${reservation.id}`)
+      .auth(token, { type: 'bearer' })
+      .expect(200);
+    expect(response.text).toBe('');
+    const documented =
+      document.paths['/api/reservations/{id}'].delete!.responses['200'];
+    expect(documented).not.toHaveProperty('content');
+  });
+
+  it('preserves authentication and documents the implemented error statuses', async () => {
+    await request(app.getHttpServer()).get('/api/users/me').expect(401);
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({})
+      .expect(400);
+    expect(
+      Object.keys(document.paths['/api/auth/login'].post!.responses).sort(),
+    ).toEqual(['201', '400', '401']);
+    expect(
+      Object.keys(document.paths['/api/reservations'].post!.responses).sort(),
+    ).toEqual(['201', '400', '401', '404']);
+    expect(
+      Object.keys(
+        document.paths['/api/reservations/{id}'].delete!.responses,
+      ).sort(),
+    ).toEqual(['200', '401', '403', '404']);
+  });
+});

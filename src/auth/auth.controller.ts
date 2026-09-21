@@ -1,5 +1,11 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiBody,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -17,7 +23,7 @@ export class AuthController {
     type: LoginDto,
   })
   @ApiResponse({
-    status: 200,
+    status: 201,
     description: 'Login successful',
     type: LoginResponseDto,
   })
@@ -25,8 +31,9 @@ export class AuthController {
     status: 401,
     description: 'Invalid credentials',
   })
+  @ApiBadRequestResponse({ description: 'Invalid login input' })
   @Post('login')
-  login(@Body() loginDto: LoginDto) {
+  login(@Body() loginDto: LoginDto): Promise<LoginResponseDto> {
     return this.authService.login(loginDto);
   }
 }

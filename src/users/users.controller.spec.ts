@@ -5,6 +5,7 @@ import type { Request } from 'express';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { UserMapper } from './mappers/user.mapper';
+import { UserProfileResponseDto } from './dto/user-profile-response.dto';
 
 import { createMockUser } from '../../test/factories/user.factory';
 
@@ -39,14 +40,19 @@ describe('UsersController', () => {
   describe('getProfile', () => {
     it('should return the authenticated user', () => {
       const user = createMockUser();
+      const identity: UserProfileResponseDto = {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+      };
 
       const request = {
-        user,
-      } as Request;
+        user: identity,
+      } as Request & { user: UserProfileResponseDto };
 
       const result = controller.getProfile(request);
 
-      expect(result).toEqual(user);
+      expect(result).toEqual(identity);
     });
   });
 

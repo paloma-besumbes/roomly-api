@@ -1,4 +1,24 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, PickType } from '@nestjs/swagger';
+
+import { RoomResponseDto } from '../../rooms/dto/room-response.dto';
+import { UserResponseDto } from '../../users/dto/user-response.dto';
+
+export class ReservationRoomResponseDto extends PickType(RoomResponseDto, [
+  'id',
+  'name',
+  'description',
+  'capacity',
+  'hasProjector',
+  'hasWhiteboard',
+] as const) {}
+
+export class ReservationUserResponseDto extends PickType(UserResponseDto, [
+  'id',
+  'email',
+  'firstName',
+  'lastName',
+  'role',
+] as const) {}
 
 export class ReservationResponseDto {
   @ApiProperty({
@@ -31,8 +51,9 @@ export class ReservationResponseDto {
 
   @ApiProperty({
     description: 'Reserved room',
+    type: ReservationRoomResponseDto,
     example: {
-      id: 'room-1',
+      id: '550e8400-e29b-41d4-a716-446655440000',
       name: 'Study Room A',
       description: 'Quiet room for study',
       capacity: 8,
@@ -40,30 +61,18 @@ export class ReservationResponseDto {
       hasWhiteboard: true,
     },
   })
-  room!: {
-    id: string;
-    name: string;
-    description: string;
-    capacity: number;
-    hasProjector: boolean;
-    hasWhiteboard: boolean;
-  };
+  room!: ReservationRoomResponseDto;
 
   @ApiProperty({
     description: 'User who created the reservation',
+    type: ReservationUserResponseDto,
     example: {
-      id: 'user-1',
+      id: '550e8400-e29b-41d4-a716-446655440001',
       email: 'john@example.com',
       firstName: 'John',
       lastName: 'Doe',
       role: 'USER',
     },
   })
-  user!: {
-    id: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    role: string;
-  };
+  user!: ReservationUserResponseDto;
 }

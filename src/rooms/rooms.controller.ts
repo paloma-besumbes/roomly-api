@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
@@ -8,7 +9,7 @@ import {
 
 import { CreateRoomDto } from './dto/create-room.dto';
 import { FilterRoomsDto } from './dto/filter-rooms.dto';
-import { Room } from './room.entity';
+import { RoomResponseDto } from './dto/room-response.dto';
 import { RoomsService } from './rooms.service';
 
 @ApiTags('Rooms')
@@ -21,11 +22,12 @@ export class RoomsController {
   })
   @ApiOkResponse({
     description: 'List of rooms',
-    type: Room,
+    type: RoomResponseDto,
     isArray: true,
   })
+  @ApiBadRequestResponse({ description: 'Invalid room filters' })
   @Get()
-  findAll(@Query() filters: FilterRoomsDto) {
+  findAll(@Query() filters: FilterRoomsDto): Promise<RoomResponseDto[]> {
     return this.roomsService.findAll(filters);
   }
 
@@ -34,10 +36,11 @@ export class RoomsController {
   })
   @ApiCreatedResponse({
     description: 'Room created successfully',
-    type: Room,
+    type: RoomResponseDto,
   })
+  @ApiBadRequestResponse({ description: 'Invalid room input' })
   @Post()
-  create(@Body() createRoomDto: CreateRoomDto) {
+  create(@Body() createRoomDto: CreateRoomDto): Promise<RoomResponseDto> {
     return this.roomsService.create(createRoomDto);
   }
 }
