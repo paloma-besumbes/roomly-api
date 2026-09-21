@@ -42,16 +42,48 @@ describe('UsersService', () => {
   });
 
   describe('findAll', () => {
-    it('should return all users', async () => {
-      const users = [createMockUser()];
+    it('should return public user fields without exposing password hashes', async () => {
+      const users = [
+        createMockUser(),
+        createMockUser({
+          id: 'user-2',
+          email: 'jane@example.com',
+          password: 'another-password-hash',
+          firstName: 'Jane',
+        }),
+      ];
 
       mockUsersRepository.find.mockResolvedValue(users);
 
       const result = await service.findAll();
 
-      expect(result).toEqual(users);
+      expect(result).toHaveLength(users.length);
+
+      result.forEach((response, index) => {
+        const user = users[index];
+
+        expect(response).toEqual({
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        });
+        expect(response).not.toHaveProperty('password');
+      });
+
+      expect(users[0].password).toBe('hashed-password');
+      expect(users[1].password).toBe('another-password-hash');
 
       expect(mockUsersRepository.find).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return an empty list when no users exist', async () => {
+      mockUsersRepository.find.mockResolvedValue([]);
+
+      await expect(service.findAll()).resolves.toEqual([]);
     });
   });
 

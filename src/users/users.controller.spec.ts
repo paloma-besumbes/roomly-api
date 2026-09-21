@@ -4,6 +4,7 @@ import type { Request } from 'express';
 
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
+import { UserMapper } from './mappers/user.mapper';
 
 import { createMockUser } from '../../test/factories/user.factory';
 
@@ -50,8 +51,8 @@ describe('UsersController', () => {
   });
 
   describe('findAll', () => {
-    it('should return all users', async () => {
-      const users = [createMockUser()];
+    it('should return public user responses from the service', async () => {
+      const users = [UserMapper.toResponse(createMockUser())];
 
       mockUsersService.findAll.mockResolvedValue(users);
 
@@ -60,6 +61,7 @@ describe('UsersController', () => {
       expect(mockUsersService.findAll).toHaveBeenCalledTimes(1);
 
       expect(result).toEqual(users);
+      expect(result[0]).not.toHaveProperty('password');
     });
   });
 

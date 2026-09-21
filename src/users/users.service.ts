@@ -19,8 +19,10 @@ export class UsersService {
     private readonly usersRepository: Repository<User>,
   ) {}
 
-  async findAll(): Promise<User[]> {
-    return await this.usersRepository.find();
+  async findAll(): Promise<UserResponseDto[]> {
+    const users = await this.usersRepository.find();
+
+    return users.map((user) => UserMapper.toResponse(user));
   }
 
   async findById(id: string): Promise<User | null> {

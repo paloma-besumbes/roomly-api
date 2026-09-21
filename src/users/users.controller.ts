@@ -46,7 +46,7 @@ export class UsersController {
   })
   @UseGuards(JwtAuthGuard)
   @Get()
-  findAll() {
+  findAll(): Promise<UserResponseDto[]> {
     return this.usersService.findAll();
   }
 
