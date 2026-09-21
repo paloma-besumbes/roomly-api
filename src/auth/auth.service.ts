@@ -7,6 +7,7 @@ import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 
 import { LoginDto } from './dto/login.dto';
+import type { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
@@ -31,7 +32,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const payload = {
+    const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       role: user.role,
