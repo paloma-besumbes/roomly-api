@@ -1,10 +1,8 @@
 # Roomly API
 
-Backend REST API for managing meeting room reservations, built with
-NestJS, TypeScript and PostgreSQL.
+Roomly API is the backend REST API for Roomly, a full-stack room reservation application built as a portfolio project.
 
-Roomly focuses on backend business rules such as preventing overlapping reservations, validating room capacity, handling authenticated users,
-and enforcing ownership/admin permissions when cancelling reservations.
+The API handles user authentication, room management and reservations, including reservation conflict detection and ownership-based cancellation permissions.
 
 ## 🔗 Roomly
 
@@ -12,34 +10,27 @@ and enforcing ownership/admin permissions when cancelling reservations.
 - **API Documentation:** [Swagger UI](https://roomly-api-yzel.onrender.com/api/docs)
 - **Frontend Repository:** [roomly-web](https://github.com/paloma-besumbes/roomly-web)
 
-The Live Demo is the complete Roomly application. The frontend communicates with this API to handle authentication, room management and reservations.
+The frontend communicates with this API to provide the complete Roomly reservation experience.
 
-### Live Demo
+### Demo account
 
 A demo account is available for testing the deployed application:
 
-Email: `john@example.com`
-Password: `secret123`
+**Email:** `john@example.com`  
+**Password:** `secret123`
 
-You can use these credentials with the login endpoint or Swagger UI.
+You can use these credentials in the frontend or with the login endpoint in Swagger UI.
 
-## About
+## About the project
 
-Roomly is a portfolio project designed to demonstrate practical backend
-development with NestJS and PostgreSQL.
+Roomly was created to practice and demonstrate backend and full-stack development using a TypeScript-based stack.
 
-The API is organized around four main modules:
+The backend is organized around four main modules:
 
-- **Users** --- user registration and authenticated profiles
-- **Auth** --- JWT-based authentication
-- **Rooms** --- room creation and filtered room search
-- **Reservations** --- reservation creation, conflict detection,
-  personal reservations and cancellation permissions
-
-The original technical specification also planned availability
-calculations, administrative room blocks and a larger role-based
-management layer. Those features are part of the project's roadmap but
-are not currently implemented in this API version.
+- **Users** — user registration and authenticated profiles
+- **Auth** — JWT-based authentication
+- **Rooms** — room creation, listing and filtering
+- **Reservations** — reservation creation, conflict detection, personal reservations and cancellation permissions
 
 ## Features
 
@@ -69,11 +60,10 @@ are not currently implemented in this API version.
 - Allow owners to cancel their own reservations
 - Allow administrators to cancel any reservation
 
-### Validation and API documentation
+### Validation and documentation
 
 - DTO validation with `class-validator`
-- Global validation with whitelist and non-whitelisted property
-  rejection
+- Global validation with whitelist and non-whitelisted property rejection
 - Swagger / OpenAPI documentation
 - Bearer JWT authentication documented in Swagger
 
@@ -102,11 +92,11 @@ are not currently implemented in this API version.
 - Supertest
 - ts-jest
 
-### Development infrastructure
+### Development and deployment
 
 - Docker Compose
-- PostgreSQL 16
 - Git / GitHub
+- Render
 
 ## Architecture
 
@@ -116,32 +106,26 @@ The application follows a modular NestJS structure:
 
 ### Controllers
 
-Controllers expose the HTTP API, receive DTOs and authenticated-user
-information, and delegate business operations to services.
+Controllers expose the HTTP API, receive DTOs and authenticated-user information, and delegate business operations to services.
 
 ### Services
 
 Services contain the main application logic, including:
 
-- user creation and password hashing
-- authentication
-- room filtering
-- reservation validation
-- reservation conflict detection
-- reservation ownership and administrator permissions
+- User creation and password hashing
+- Authentication
+- Room filtering
+- Reservation validation
+- Reservation conflict detection
+- Reservation ownership and administrator permissions
 
-### Entities
+### Entities and DTOs
 
-TypeORM entities represent the PostgreSQL data model.
-
-### DTOs
-
-DTOs define and validate the data accepted by the API.
+TypeORM entities represent the PostgreSQL data model. DTOs define and validate the data accepted by the API.
 
 ### Mappers
 
-User and reservation mappers convert database entities into API response
-objects without exposing user passwords.
+User and reservation mappers convert database entities into API response objects without exposing user passwords.
 
 ## Project structure
 
@@ -187,7 +171,7 @@ objects without exposing user passwords.
 
 ## Data model
 
-The current implementation contains three main persisted entities:
+The application contains three main persisted entities:
 
 ### User
 
@@ -238,167 +222,58 @@ Main fields:
 - `user`
 - `createdAt`
 
-Reservations use eager relations for their associated room and user, and
-response mapping removes the user's password from API responses.
+Reservation responses include their associated room and user information while mapping user data so passwords are not exposed.
 
-## API
+## API overview
 
 The application uses `/api` as its global API prefix.
 
-### Authentication
+| Method | Endpoint | Description | Authentication |
+| --- | --- | --- | --- |
+| `POST` | `/api/users` | Register a user | No |
+| `GET` | `/api/users/me` | Get authenticated user profile | JWT |
+| `GET` | `/api/users` | List users | JWT |
+| `POST` | `/api/auth/login` | Authenticate and receive a JWT | No |
+| `GET` | `/api/rooms` | List and filter rooms | No |
+| `POST` | `/api/rooms` | Create a room | No |
+| `POST` | `/api/reservations` | Create a reservation | JWT |
+| `GET` | `/api/reservations/me` | Get personal reservations | JWT |
+| `DELETE` | `/api/reservations/:id` | Cancel a reservation | JWT |
 
-#### Register
+For complete request schemas, responses and interactive endpoint testing, see the [Swagger documentation](https://roomly-api-yzel.onrender.com/api/docs).
 
-`POST /api/users`
+### Room filters
 
-Creates a new user.
-
-The password is hashed before persistence and the response excludes the
-password.
-
-#### Login
-
-`POST /api/auth/login`
-
-Returns a JWT access token.
-
-Example request:
-
-`{"email":"john@example.com","password":"secret123"}`
-
-Example response:
-
-`{"accessToken":"<jwt>"}`
-
-### Users
-
-#### Get current user
-
-`GET /api/users/me`
-
-Requires a valid JWT.
-
-Returns the authenticated user's profile.
-
-#### List users
-
-`GET /api/users`
-
-Requires a valid JWT.
-
-Returns the users currently stored by the application.
-
-### Rooms
-
-#### List rooms
-
-`GET /api/rooms`
-
-Returns rooms and supports optional filters:
+`GET /api/rooms` supports optional filters:
 
 - `capacity`
 - `hasProjector`
 - `hasWhiteboard`
 
-The capacity filter returns rooms whose capacity is greater than or
-equal to the requested value.
+The capacity filter returns rooms whose capacity is greater than or equal to the requested value.
 
-Examples:
-
-`GET /api/rooms?capacity=6`
+Example:
 
 `GET /api/rooms?capacity=6&hasProjector=true&hasWhiteboard=true`
 
-#### Create room
+### Reservation conflict detection
 
-`POST /api/rooms`
-
-Creates a room.
-
-The current controller does not apply JWT protection to room creation,
-so this endpoint should not be described as admin-only in the current
-implementation.
-
-### Reservations
-
-#### Create reservation
-
-`POST /api/reservations`
-
-Requires a valid JWT.
-
-The authenticated user's ID is taken from the JWT rather than the
-request body.
-
-The service verifies:
-
-- the user exists
-- the room exists
-- the requested time interval does not overlap another reservation for
-  the same room
+When creating a reservation, the service verifies that the user and room exist and that the requested interval does not overlap another reservation for the same room.
 
 The overlap rule is:
 
 `existing.startTime < requested.endTime AND existing.endTime > requested.startTime`
 
-This means a reservation from 10:00 to 11:00 conflicts with one from
-10:30 to 11:30, but not with one starting exactly at 11:00.
+This allows consecutive reservations: a reservation ending at 11:00 does not conflict with another starting exactly at 11:00.
 
-#### Get my reservations
+### Cancellation permissions
 
-`GET /api/reservations/me`
+A reservation can be cancelled by:
 
-Requires a valid JWT.
-
-Returns the authenticated user's reservations ordered by start time.
-
-#### Cancel reservation
-
-`DELETE /api/reservations/:id`
-
-Requires a valid JWT.
-
-The current implementation allows:
-
-- the reservation owner to cancel their reservation
-- an `ADMIN` user to cancel any reservation
+- The user who owns the reservation
+- An `ADMIN` user
 
 Other authenticated users receive a forbidden response.
-
-## HTTP error handling
-
-The API uses standard NestJS HTTP exceptions for common business cases.
-
-Examples include:
-
-- `400 Bad Request` --- invalid input or an existing user email
-- `401 Unauthorized` --- invalid login credentials or missing/invalid
-  authentication
-- `403 Forbidden` --- authenticated user does not have permission to
-  cancel a reservation
-- `404 Not Found` --- requested user, room or reservation does not
-  exist
-
-## Business rules currently implemented
-
-The current codebase implements the following core reservation rules:
-
-- User email must be unique.
-- Passwords are hashed before persistence.
-- Only authenticated users can create reservations.
-- The referenced user must exist.
-- The referenced room must exist.
-- A room cannot have two overlapping reservations.
-- Reservations that end exactly when another begins do not overlap.
-- Users can cancel their own reservations.
-- Administrators can cancel reservations belonging to other users.
-
-The broader technical specification contains additional planned rules
-such as preventing past reservations, validating `endTime > startTime`,
-checking room capacity during reservation creation, room
-activation/deactivation and administrative room blocks. Those rules are
-not currently implemented in the reviewed code and are therefore not
-presented as current functionality.
 
 ## Testing
 
@@ -411,36 +286,18 @@ Unit tests cover the main controllers and services for:
 - Rooms
 - Reservations
 
-The reservation tests include scenarios such as:
+Reservation tests include scenarios such as missing users or rooms, overlapping reservations, successful creation, personal reservation retrieval, ownership checks and administrator cancellation permissions.
 
-- missing users
-- missing rooms
-- overlapping reservations
-- successful reservation creation
-- retrieving personal reservations
-- reservation ownership
-- administrator cancellation permissions
+The repository also includes an E2E testing configuration. Broader end-to-end coverage is planned as a future improvement.
 
-The repository also contains an E2E testing configuration using Jest,
-ts-jest and Supertest. The current E2E spec is still the basic NestJS
-root-endpoint test, so broader end-to-end coverage remains a future
-improvement.
+### Test commands
 
-### Run tests
-
-`npm test`
-
-### Watch mode
-
-`npm run test:watch`
-
-### Coverage
-
-`npm run test:cov`
-
-### E2E tests
-
-`npm run test:e2e`
+```bash
+npm test
+npm run test:watch
+npm run test:cov
+npm run test:e2e
+```
 
 ## Local development
 
@@ -450,215 +307,96 @@ improvement.
 - npm
 - Docker Desktop
 
-PostgreSQL can be started locally with the provided Docker Compose
-configuration.
+### 1. Clone the repository
 
-### 1. Start PostgreSQL
+```bash
+git clone https://github.com/paloma-besumbes/roomly-api.git
+cd roomly-api
+npm install
+```
 
-From the project root:
+### 2. Start PostgreSQL
 
-`docker compose up -d`
+```bash
+docker compose up -d
+```
 
-The Compose configuration starts:
+The Docker Compose configuration starts PostgreSQL locally using host port `5433` and persists data through a Docker volume.
 
-- PostgreSQL 16
-- container name: `roomly_postgres`
-- database: `roomly_db`
-- host port: `5433`
-- PostgreSQL container port: `5432`
+### 3. Configure environment variables
 
-Data is persisted through the `roomly_postgres_data` Docker volume.
+Create a `.env` file in the project root:
 
-### 2. Configure environment variables
+```env
+PORT=3000
+DATABASE_HOST=localhost
+DATABASE_PORT=5433
+DATABASE_USERNAME=postgres
+DATABASE_PASSWORD=postgres
+DATABASE_NAME=roomly_db
+JWT_SECRET=change-this-secret
+FRONTEND_URL=http://localhost:5173
+```
 
-Create a local `.env` file with the variables expected by the
-application.
-
-The current `AppModule` reads the database username from
-`DATABASE_USERNAME`.
-
-Example:
-
-    PORT=3000
-    DATABASE_HOST=localhost
-    DATABASE_PORT=5433
-    DATABASE_USERNAME=postgres
-    DATABASE_PASSWORD=postgres
-    DATABASE_NAME=roomly_db
-    JWT_SECRET=change-this-secret
-
-Do not commit real secrets to Git.
-
-### 3. Install dependencies
-
-`npm install`
+Use your own local credentials and secret values. Do not commit real secrets to Git.
 
 ### 4. Run the API
 
-Development mode:
+```bash
+npm run start:dev
+```
 
-`npm run start:dev`
+The API will be available at `http://localhost:3000/api`.
 
-The API will be available at:
-
-`http://localhost:3000/api`
-
-Swagger:
-
-`http://localhost:3000/api/docs`
-
-### Production build
-
-`npm run build`
-
-Then:
-
-`npm run start:prod`
+Swagger UI will be available at `http://localhost:3000/api/docs`.
 
 ## Available scripts
 
-Script Description
-
----
-
-`npm run build` Builds the NestJS application
-`npm run start` Starts the application
-`npm run start:dev` Starts the application in watch mode
-`npm run start:debug` Starts the application in debug/watch mode
-`npm run start:prod` Runs the compiled application
-`npm run lint` Runs ESLint
-`npm run format` Formats source and test files with Prettier
-`npm test` Runs Jest tests
-`npm run test:watch` Runs Jest in watch mode
-`npm run test:cov` Generates test coverage
-`npm run test:debug` Runs Jest with the Node inspector
-`npm run test:e2e` Runs the configured E2E test suite
-
-## Swagger / OpenAPI
-
-Swagger UI is available at:
-
-`https://roomly-api-yzel.onrender.com/api/docs`
-
-The API documentation includes bearer authentication, allowing
-JWT-protected endpoints to be tested directly from Swagger UI.
-
-To authenticate, obtain an access token through the login endpoint and
-use it as the bearer token in Swagger.
+| Script | Description |
+| --- | --- |
+| `npm run build` | Builds the NestJS application |
+| `npm run start` | Starts the application |
+| `npm run start:dev` | Starts the application in watch mode |
+| `npm run start:prod` | Runs the compiled application |
+| `npm run lint` | Runs ESLint |
+| `npm run format` | Formats source and test files with Prettier |
+| `npm test` | Runs Jest tests |
+| `npm run test:watch` | Runs Jest in watch mode |
+| `npm run test:cov` | Generates test coverage |
+| `npm run test:e2e` | Runs the configured E2E test suite |
 
 ## Deployment
 
-The backend is deployed as a NestJS application on Render and uses a
-PostgreSQL database hosted on Render.
+The backend is deployed on Render and uses a PostgreSQL database hosted on Render.
 
-Production API:
+The application reads its configuration from environment variables, including database connection settings, `PORT`, `FRONTEND_URL` and the JWT secret.
 
-`https://roomly-api-yzel.onrender.com`
+- **Production API:** [roomly-api-yzel.onrender.com](https://roomly-api-yzel.onrender.com)
+- **Swagger:** [API Documentation](https://roomly-api-yzel.onrender.com/api/docs)
+- **Frontend:** [Roomly Web](https://roomly-web-red.vercel.app/)
 
-The application reads configuration from environment variables,
-including database connection settings, `PORT`, `FRONTEND_URL` and the
-JWT secret.
+## Future improvements
 
-The application listens on `0.0.0.0` and uses the configured `PORT`
-value.
+Planned backend improvements include:
 
-## Technical decisions
-
-### PostgreSQL as the source of truth
-
-Roomly uses PostgreSQL as its persistent data store and TypeORM as the
-ORM.
-
-### Business logic in services
-
-Controllers remain focused on HTTP concerns while reservation rules and
-permission checks are handled by services.
-
-### JWT authentication
-
-JWTs are used to authenticate requests to protected endpoints. Passport
-and `passport-jwt` provide the authentication strategy used by NestJS.
-
-### Password hashing
-
-Passwords are hashed with bcrypt before being persisted.
-
-### Swagger documentation
-
-The API is documented with Swagger/OpenAPI so that endpoints and
-authentication can be explored interactively.
-
-### Docker for local database infrastructure
-
-Docker Compose is used to provide PostgreSQL consistently during local
-development. The NestJS application itself is not containerized in the
-current version.
-
-## Roadmap
-
-The original Roomly technical specification defines a broader roadmap.
-
-### V1 --- Backend foundation
-
-Current project:
-
-- JWT authentication
-- Users
-- Rooms
-- Reservations
-- Reservation conflict detection
-- Role-aware reservation cancellation
-- Validation
-- Unit tests
-- Swagger/OpenAPI
-- Docker Compose PostgreSQL setup
-- Deployment
-
-### Future backend improvements
-
-- Stronger reservation input/business validation
-- Room activation/deactivation
+- Stronger reservation input and business validation
+- Room activation and deactivation
 - Capacity validation during reservation creation
 - Administrative room blocks
 - Availability calculation
 - Expanded role-based access control
 - Broader E2E test coverage
 - Environment validation
-- More comprehensive API tests
-
-### V2 --- React frontend
-
-Planned:
-
-- Login and registration
-- User dashboard
-- Date and people selectors
-- Calendar-based availability
-- Room selection
-- Reservation confirmation
-- My reservations
-- Basic administration UI
-
-### V3 --- Integrations
-
-Potential future additions:
-
-- Google Calendar synchronization
-- Email confirmations
-- Notifications
-- Reservation export
-- More advanced administration
 
 ## Related project
 
-Roomly is a full-stack portfolio project split into two repositories:
+Roomly is split into two repositories:
 
-- **Roomly API** --- NestJS backend
-- **Roomly Web** --- React frontend
+- **Roomly API** — this NestJS backend
+- **[Roomly Web](https://github.com/paloma-besumbes/roomly-web)** — React frontend
 
-The frontend consumes this API to provide the user-facing reservation
-experience.
+The frontend consumes this API to provide the user-facing reservation experience.
 
 ## License
 
-This project is a personal portfolio project.
+This project was created as a portfolio project.
