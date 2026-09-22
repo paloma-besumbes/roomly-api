@@ -38,6 +38,13 @@ export class ReservationsService {
     createReservationDto: CreateReservationDto,
     userId: string,
   ): Promise<ReservationResponseDto> {
+    const startTime = new Date(createReservationDto.startTime);
+    const endTime = new Date(createReservationDto.endTime);
+
+    if (endTime.getTime() <= startTime.getTime()) {
+      throw new BadRequestException('endTime must be later than startTime');
+    }
+
     // Buscamos el usuario autenticado
     const user = await this.usersRepository.findOne({
       where: {
@@ -80,8 +87,8 @@ export class ReservationsService {
     }
 
     const reservation = this.reservationsRepository.create({
-      startTime: new Date(createReservationDto.startTime),
-      endTime: new Date(createReservationDto.endTime),
+      startTime,
+      endTime,
       room,
       user,
     });

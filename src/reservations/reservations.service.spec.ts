@@ -73,6 +73,90 @@ describe('ReservationsService', () => {
   });
 
   describe('create', () => {
+    it.each([
+      {
+        scenario: 'equal times',
+        startTime: '2026-08-10T10:00:00.000Z',
+        endTime: '2026-08-10T10:00:00.000Z',
+      },
+      {
+        scenario: 'an end time earlier than the start',
+        startTime: '2026-08-10T10:00:00.000Z',
+        endTime: '2026-08-10T09:00:00.000Z',
+      },
+      {
+        scenario: 'equal instants expressed with different timezone offsets',
+        startTime: '2026-08-10T10:00:00.000Z',
+        endTime: '2026-08-10T12:00:00.000+02:00',
+      },
+    ])(
+      'should reject $scenario before database access',
+      async ({ startTime, endTime }) => {
+        const result = service.create(
+          { roomId: 'room-1', startTime, endTime },
+          'user-1',
+        );
+
+        await expect(result).rejects.toBeInstanceOf(BadRequestException);
+        await expect(result).rejects.toMatchObject({
+          status: 400,
+          message: 'endTime must be later than startTime',
+        });
+
+        expect(mockUsersRepository.findOne).not.toHaveBeenCalled();
+        expect(mockRoomsRepository.findOne).not.toHaveBeenCalled();
+        expect(
+          mockReservationsRepository.createQueryBuilder,
+        ).not.toHaveBeenCalled();
+        expect(mockReservationsRepository.create).not.toHaveBeenCalled();
+        expect(mockReservationsRepository.save).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each([
+      {
+        scenario:
+          'a one-millisecond past booking outside typical hours and quarter-hour boundaries',
+        startTime: '2000-01-01T02:07:00.000Z',
+        endTime: '2000-01-01T02:07:00.001Z',
+      },
+      {
+        scenario: 'a later instant with an earlier-looking local time',
+        startTime: '2026-08-10T12:00:00.000+02:00',
+        endTime: '2026-08-10T11:00:00.000Z',
+      },
+    ])('should still allow $scenario', async ({ startTime, endTime }) => {
+      const user = createMockUser();
+      const room = createMockRoom();
+      const reservation = createMockReservation({
+        user,
+        room,
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+      });
+
+      mockUsersRepository.findOne.mockResolvedValue(user);
+      mockRoomsRepository.findOne.mockResolvedValue(room);
+      mockQueryBuilder.getOne.mockResolvedValue(null);
+      mockReservationsRepository.create.mockReturnValue(reservation);
+      mockReservationsRepository.save.mockResolvedValue(reservation);
+
+      const result = await service.create(
+        { roomId: room.id, startTime, endTime },
+        user.id,
+      );
+
+      expect(mockReservationsRepository.create).toHaveBeenCalledWith({
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        room,
+        user,
+      });
+      expect(mockReservationsRepository.save).toHaveBeenCalledWith(reservation);
+      expect(result.startTime).toEqual(new Date(startTime));
+      expect(result.endTime).toEqual(new Date(endTime));
+    });
+
     it('should throw NotFoundException when user does not exist', async () => {
       const createReservationDto = {
         roomId: 'room-1',
@@ -164,7 +248,13 @@ describe('ReservationsService', () => {
 
       expect(mockQueryBuilder.where).toHaveBeenCalled();
 
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalled();
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'reservation.startTime < :endTime AND reservation.endTime > :startTime',
+        {
+          startTime: createReservationDto.startTime,
+          endTime: createReservationDto.endTime,
+        },
+      );
 
       expect(mockQueryBuilder.getOne).toHaveBeenCalled();
 
