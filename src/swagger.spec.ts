@@ -237,6 +237,50 @@ describe('Swagger response contracts', () => {
     expectFields('LoginResponseDto', body);
   });
 
+  describe.each(['hasProjector', 'hasWhiteboard'] as const)(
+    'room query parameter %s',
+    (filter) => {
+      it('documents only true and false strings as optional values', () => {
+        const parameter = document.paths['/api/rooms'].get!.parameters!.find(
+          (entry) => !('$ref' in entry) && entry.name === filter,
+        );
+        expect(parameter).toMatchObject({
+          name: filter,
+          in: 'query',
+          required: false,
+          schema: { type: 'string', enum: ['true', 'false'] },
+        });
+      });
+
+      it.each(['true', 'false'])(
+        'accepts %s and preserves capacity conversion',
+        async (value) => {
+          await request(app.getHttpServer())
+            .get('/api/rooms')
+            .query({ [filter]: value, capacity: '8' })
+            .expect(200);
+
+          expect(mockRoomsService.findAll).toHaveBeenCalledWith({
+            [filter]: value,
+            capacity: 8,
+          });
+        },
+      );
+
+      it.each(['1', '0', 'yes', 'no', 'TRUE', 'FALSE', '', ' true '])(
+        'rejects invalid value "%s" before calling the service',
+        async (value) => {
+          await request(app.getHttpServer())
+            .get('/api/rooms')
+            .query({ [filter]: value })
+            .expect(400);
+
+          expect(mockRoomsService.findAll).not.toHaveBeenCalled();
+        },
+      );
+    },
+  );
+
   it('rejects unauthenticated room creation with 401 before calling the service', async () => {
     await request(app.getHttpServer())
       .post('/api/rooms')

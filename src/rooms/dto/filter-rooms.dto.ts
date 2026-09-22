@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBooleanString, IsInt, IsOptional, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, Min } from 'class-validator';
 
 export class FilterRoomsDto {
   @ApiPropertyOptional({
@@ -16,17 +16,21 @@ export class FilterRoomsDto {
 
   @ApiPropertyOptional({
     example: 'true',
-    description: 'Filter rooms with a projector',
+    enum: ['true', 'false'],
+    description:
+      'Use true for rooms with a projector, false for rooms without one',
   })
   @IsOptional()
-  @IsBooleanString()
+  @IsIn(['true', 'false'])
   hasProjector?: string;
 
   @ApiPropertyOptional({
     example: 'true',
-    description: 'Filter rooms with a whiteboard',
+    enum: ['true', 'false'],
+    description:
+      'Use true for rooms with a whiteboard, false for rooms without one',
   })
   @IsOptional()
-  @IsBooleanString()
+  @IsIn(['true', 'false'])
   hasWhiteboard?: string;
 }

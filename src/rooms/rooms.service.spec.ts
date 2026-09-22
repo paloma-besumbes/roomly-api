@@ -57,6 +57,7 @@ describe('RoomsService', () => {
       );
 
       expect(mockQueryBuilder.getMany).toHaveBeenCalled();
+      expect(mockQueryBuilder.andWhere).not.toHaveBeenCalled();
     });
 
     it('should filter by capacity', async () => {
@@ -76,35 +77,47 @@ describe('RoomsService', () => {
       );
     });
 
-    it('should filter by projector', async () => {
-      mockQueryBuilder.getMany.mockResolvedValue([]);
+    it.each([
+      ['true', true],
+      ['false', false],
+    ] as const)(
+      'should convert hasProjector=%s to %s',
+      async (value, expected) => {
+        mockQueryBuilder.getMany.mockResolvedValue([]);
 
-      await service.findAll({
-        hasProjector: 'true',
-      });
+        await service.findAll({
+          hasProjector: value,
+        });
 
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'room.hasProjector = :hasProjector',
-        {
-          hasProjector: true,
-        },
-      );
-    });
+        expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+          'room.hasProjector = :hasProjector',
+          {
+            hasProjector: expected,
+          },
+        );
+      },
+    );
 
-    it('should filter by whiteboard', async () => {
-      mockQueryBuilder.getMany.mockResolvedValue([]);
+    it.each([
+      ['true', true],
+      ['false', false],
+    ] as const)(
+      'should convert hasWhiteboard=%s to %s',
+      async (value, expected) => {
+        mockQueryBuilder.getMany.mockResolvedValue([]);
 
-      await service.findAll({
-        hasWhiteboard: 'true',
-      });
+        await service.findAll({
+          hasWhiteboard: value,
+        });
 
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'room.hasWhiteboard = :hasWhiteboard',
-        {
-          hasWhiteboard: true,
-        },
-      );
-    });
+        expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+          'room.hasWhiteboard = :hasWhiteboard',
+          {
+            hasWhiteboard: expected,
+          },
+        );
+      },
+    );
 
     it('should apply all filters', async () => {
       mockQueryBuilder.getMany.mockResolvedValue([]);
