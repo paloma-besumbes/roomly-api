@@ -21,6 +21,7 @@ import { ReservationsService } from './reservations/reservations.service';
 import { RoomsController } from './rooms/rooms.controller';
 import { RoomsService } from './rooms/rooms.service';
 import { User } from './users/entities/user.entity';
+import { UserRole } from './users/entities/user-role.enum';
 import { UsersController } from './users/users.controller';
 import { UsersService } from './users/users.service';
 
@@ -28,6 +29,7 @@ describe('Swagger response contracts', () => {
   let app: INestApplication<App>;
   let document: OpenAPIObject;
   let token: string;
+  let adminToken: string;
   const secret = 'swagger-contract-test-secret';
   const user = createMockUser({
     id: '550e8400-e29b-41d4-a716-446655440001',
@@ -35,6 +37,17 @@ describe('Swagger response contracts', () => {
   const room = createMockRoom({
     id: '550e8400-e29b-41d4-a716-446655440002',
   });
+  const mockRoomsService = {
+    findAll: jest.fn().mockResolvedValue([room]),
+    create: jest.fn().mockResolvedValue(room),
+  };
+  const createRoomDto = {
+    name: room.name,
+    description: room.description,
+    capacity: room.capacity,
+    hasProjector: room.hasProjector,
+    hasWhiteboard: room.hasWhiteboard,
+  };
   const reservation = ReservationMapper.toResponseDto(
     createMockReservation({
       id: '550e8400-e29b-41d4-a716-446655440003',
@@ -71,10 +84,7 @@ describe('Swagger response contracts', () => {
         },
         {
           provide: RoomsService,
-          useValue: {
-            findAll: jest.fn().mockResolvedValue([room]),
-            create: jest.fn().mockResolvedValue(room),
-          },
+          useValue: mockRoomsService,
         },
         {
           provide: ReservationsService,
@@ -110,6 +120,15 @@ describe('Swagger response contracts', () => {
       email: user.email,
       role: user.role,
     });
+    adminToken = await module.get(JwtService).signAsync({
+      sub: '550e8400-e29b-41d4-a716-446655440004',
+      email: 'admin@example.com',
+      role: UserRole.ADMIN,
+    });
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
   afterAll(async () => {
@@ -154,6 +173,7 @@ describe('Swagger response contracts', () => {
     for (const [path, method] of [
       ['/api/users/me', 'get'],
       ['/api/users', 'get'],
+      ['/api/rooms', 'post'],
       ['/api/reservations', 'post'],
       ['/api/reservations/me', 'get'],
       ['/api/reservations/{id}', 'delete'],
@@ -167,7 +187,6 @@ describe('Swagger response contracts', () => {
       ['/api/users', 'post'],
       ['/api/auth/login', 'post'],
       ['/api/rooms', 'get'],
-      ['/api/rooms', 'post'],
     ] as const) {
       expect(document.paths[path][method]!.security).toBeUndefined();
     }
@@ -218,7 +237,30 @@ describe('Swagger response contracts', () => {
     expectFields('LoginResponseDto', body);
   });
 
-  it('documents complete room schemas for public listing and creation', async () => {
+  it('rejects unauthenticated room creation with 401 before calling the service', async () => {
+    await request(app.getHttpServer())
+      .post('/api/rooms')
+      .send(createRoomDto)
+      .expect(401);
+
+    expect(mockRoomsService.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects USER room creation with 403 before calling the service', async () => {
+    await request(app.getHttpServer())
+      .post('/api/rooms')
+      .auth(token, { type: 'bearer' })
+      .send(createRoomDto)
+      .expect(403, {
+        statusCode: 403,
+        message: 'Administrator access required',
+        error: 'Forbidden',
+      });
+
+    expect(mockRoomsService.create).not.toHaveBeenCalled();
+  });
+
+  it('allows public room listing and ADMIN creation with documented response schemas', async () => {
     const response = await request(app.getHttpServer())
       .get('/api/rooms')
       .expect(200);
@@ -232,14 +274,11 @@ describe('Swagger response contracts', () => {
     });
     await request(app.getHttpServer())
       .post('/api/rooms')
-      .send({
-        name: room.name,
-        description: room.description,
-        capacity: room.capacity,
-        hasProjector: room.hasProjector,
-        hasWhiteboard: room.hasWhiteboard,
-      })
+      .auth(adminToken, { type: 'bearer' })
+      .send(createRoomDto)
       .expect(201, rooms[0]);
+    expect(mockRoomsService.create).toHaveBeenCalledTimes(1);
+    expect(mockRoomsService.create).toHaveBeenCalledWith(createRoomDto);
     expect(responseSchema('/api/rooms', 'get', 200)).toEqual({
       type: 'array',
       items: { $ref: '#/components/schemas/RoomResponseDto' },
@@ -304,6 +343,10 @@ describe('Swagger response contracts', () => {
     expect(
       Object.keys(document.paths['/api/auth/login'].post!.responses).sort(),
     ).toEqual(['201', '400', '401']);
+    expect(
+      Object.keys(document.paths['/api/rooms'].post!.responses).sort(),
+    ).toEqual(['201', '400', '401', '403']);
+    expect(document.paths['/api/rooms'].post!.summary).toContain('ADMIN');
     expect(
       Object.keys(document.paths['/api/reservations'].post!.responses).sort(),
     ).toEqual(['201', '400', '401', '404']);
