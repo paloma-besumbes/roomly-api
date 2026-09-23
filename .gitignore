@@ -28,6 +28,11 @@ lerna-debug.log*
 .settings/
 *.sublime-workspace
 
+
+# Local VS Code / Codex Finish Notifier files
+.vscode/
+vscode/
+
 # IDE - VSCode
 .vscode/*
 !.vscode/settings.json
