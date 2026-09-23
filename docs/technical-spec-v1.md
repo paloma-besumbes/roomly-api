@@ -1,5 +1,7 @@
 Especificación técnica v1 — Roomly API
 
+> **Nota: especificación histórica de planificación.** Este documento incluye propuestas que no están implementadas y no describe necesariamente el comportamiento actual. El código fuente actual y la documentación OpenAPI generada por la aplicación (Swagger en `/api/docs`) son la fuente de verdad.
+
 1. Nombre del proyecto
 
 Roomly API

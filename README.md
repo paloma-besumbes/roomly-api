@@ -235,7 +235,7 @@ The application uses `/api` as its global API prefix.
 | `GET` | `/api/users` | List users | JWT |
 | `POST` | `/api/auth/login` | Authenticate and receive a JWT | No |
 | `GET` | `/api/rooms` | List and filter rooms | No |
-| `POST` | `/api/rooms` | Create a room | No |
+| `POST` | `/api/rooms` | Create a room | JWT + `ADMIN` role |
 | `POST` | `/api/reservations` | Create a reservation | JWT |
 | `GET` | `/api/reservations/me` | Get personal reservations | JWT |
 | `DELETE` | `/api/reservations/:id` | Cancel a reservation | JWT |
