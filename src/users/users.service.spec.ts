@@ -87,38 +87,6 @@ describe('UsersService', () => {
     });
   });
 
-  describe('findById', () => {
-    it('should return the user when it exists', async () => {
-      const user = createMockUser();
-
-      mockUsersRepository.findOne.mockResolvedValue(user);
-
-      const result = await service.findById('1');
-
-      expect(result).toEqual(user);
-
-      expect(mockUsersRepository.findOne).toHaveBeenCalledWith({
-        where: {
-          id: '1',
-        },
-      });
-    });
-
-    it('should return null when the user does not exist', async () => {
-      mockUsersRepository.findOne.mockResolvedValue(null);
-
-      const result = await service.findById('999');
-
-      expect(result).toBeNull();
-
-      expect(mockUsersRepository.findOne).toHaveBeenCalledWith({
-        where: {
-          id: '999',
-        },
-      });
-    });
-  });
-
   describe('findByEmail', () => {
     it('should return the user when the email exists', async () => {
       const user = createMockUser({

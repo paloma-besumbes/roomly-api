@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import type { Request } from 'express';
+import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
@@ -48,7 +48,7 @@ describe('UsersController', () => {
 
       const request = {
         user: identity,
-      } as Request & { user: UserProfileResponseDto };
+      } as AuthenticatedRequest;
 
       const result = controller.getProfile(request);
 

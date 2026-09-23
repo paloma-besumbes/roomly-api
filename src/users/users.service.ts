@@ -25,12 +25,6 @@ export class UsersService {
     return users.map((user) => UserMapper.toResponse(user));
   }
 
-  async findById(id: string): Promise<User | null> {
-    return await this.usersRepository.findOne({
-      where: { id },
-    });
-  }
-
   async findByEmail(email: string): Promise<User | null> {
     return await this.usersRepository.findOne({
       where: { email },

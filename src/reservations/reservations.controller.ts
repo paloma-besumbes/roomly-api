@@ -20,15 +20,13 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
-import type { Request as ExpressRequest } from 'express';
+import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { ReservationResponseDto } from './dto/reservation-response.dto';
 import { ReservationsService } from './reservations.service';
-
-import { UserRole } from '../users/entities/user-role.enum';
 
 @ApiTags('Reservations')
 @Controller('reservations')
@@ -54,13 +52,7 @@ export class ReservationsController {
   create(
     @Body() createReservationDto: CreateReservationDto,
     @Request()
-    req: ExpressRequest & {
-      user: {
-        userId: string;
-        email: string;
-        role: UserRole;
-      };
-    },
+    req: AuthenticatedRequest,
   ) {
     return this.reservationsService.create(
       createReservationDto,
@@ -82,13 +74,7 @@ export class ReservationsController {
   @UseGuards(JwtAuthGuard)
   getMyReservations(
     @Request()
-    req: ExpressRequest & {
-      user: {
-        userId: string;
-        email: string;
-        role: UserRole;
-      };
-    },
+    req: AuthenticatedRequest,
   ) {
     return this.reservationsService.findMyReservations(req.user.userId);
   }
@@ -111,13 +97,7 @@ export class ReservationsController {
   remove(
     @Param('id') reservationId: string,
     @Request()
-    req: ExpressRequest & {
-      user: {
-        userId: string;
-        email: string;
-        role: UserRole;
-      };
-    },
+    req: AuthenticatedRequest,
   ) {
     return this.reservationsService.remove(
       reservationId,

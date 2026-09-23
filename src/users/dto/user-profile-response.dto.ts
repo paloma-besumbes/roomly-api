@@ -1,8 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 import { UserRole } from '../entities/user-role.enum';
+import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-request.interface';
 
-export class UserProfileResponseDto {
+export class UserProfileResponseDto implements AuthenticatedUser {
   @ApiProperty({
     example: '550e8400-e29b-41d4-a716-446655440000',
     description: 'User identifier from the JWT subject',

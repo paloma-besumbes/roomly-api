@@ -9,7 +9,7 @@ import {
 } from '@nestjs/swagger';
 import { Body, Post, Controller, Get, Req, UseGuards } from '@nestjs/common';
 
-import type { Request } from 'express';
+import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -19,7 +19,6 @@ import { UserProfileResponseDto } from './dto/user-profile-response.dto';
 import { UsersService } from './users.service';
 
 @ApiTags('Users')
-@Controller('users')
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -35,9 +34,7 @@ export class UsersController {
   @ApiUnauthorizedResponse({ description: 'Missing, invalid or expired JWT' })
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  getProfile(
-    @Req() request: Request & { user: UserProfileResponseDto },
-  ): UserProfileResponseDto {
+  getProfile(@Req() request: AuthenticatedRequest): UserProfileResponseDto {
     return request.user;
   }
 

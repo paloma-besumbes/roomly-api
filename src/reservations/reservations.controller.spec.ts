@@ -5,8 +5,7 @@ import { ReservationsService } from './reservations.service';
 
 import { createMockReservation } from '../../test/factories/reservation.factory';
 import { createMockUser } from '../../test/factories/user.factory';
-import type { Request } from 'express';
-import { UserRole } from '../users/entities/user-role.enum';
+import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 
 describe('ReservationsController', () => {
   let controller: ReservationsController;
@@ -53,13 +52,7 @@ describe('ReservationsController', () => {
           email: user.email,
           role: user.role,
         },
-      } as Request & {
-        user: {
-          userId: string;
-          email: string;
-          role: UserRole;
-        };
-      };
+      } as AuthenticatedRequest;
 
       const reservation = createMockReservation();
 
@@ -86,13 +79,7 @@ describe('ReservationsController', () => {
           email: user.email,
           role: user.role,
         },
-      } as Request & {
-        user: {
-          userId: string;
-          email: string;
-          role: UserRole;
-        };
-      };
+      } as AuthenticatedRequest;
 
       const reservations = [createMockReservation()];
 
@@ -120,13 +107,7 @@ describe('ReservationsController', () => {
           email: user.email,
           role: user.role,
         },
-      } as Request & {
-        user: {
-          userId: string;
-          email: string;
-          role: UserRole;
-        };
-      };
+      } as AuthenticatedRequest;
 
       mockReservationsService.remove.mockResolvedValue(undefined);
 
