@@ -332,6 +332,25 @@ describe('Swagger response contracts', () => {
     });
   });
 
+  it.each(['startTime', 'endTime'])(
+    'documents the reservation %s timestamp format',
+    (field) => {
+      const property = schema('CreateReservationDto').properties![field];
+      if ('$ref' in property || !property.pattern) {
+        throw new Error('Expected an inline timestamp schema with a pattern');
+      }
+      expect(property.type).toBe('string');
+      expect(property.format).toBe('date-time');
+      expect(property.description).toContain('Z or ±HH:mm');
+      const pattern = new RegExp(property.pattern);
+      expect(pattern.test('2026-08-10T10:00:00Z')).toBe(true);
+      expect(pattern.test('2026-08-10T12:00:00.123+02:00')).toBe(true);
+      expect(pattern.test('2026-08-10')).toBe(false);
+      expect(pattern.test('2026-W33-1')).toBe(false);
+      expect(pattern.test('2026-08-10T10:00:00')).toBe(false);
+    },
+  );
+
   it('documents the reservation mapper fields including nested schemas', async () => {
     const response = await request(app.getHttpServer())
       .get('/api/reservations/me')

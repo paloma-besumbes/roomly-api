@@ -1,5 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsUUID } from 'class-validator';
+import { IsUUID } from 'class-validator';
+import {
+  IsReservationDateTime,
+  RESERVATION_DATE_TIME_FORMAT,
+  RESERVATION_DATE_TIME_PATTERN,
+} from '../validation/reservation-date-time.validator';
 
 export class CreateReservationDto {
   @ApiProperty({
@@ -12,17 +17,19 @@ export class CreateReservationDto {
 
   @ApiProperty({
     example: '2026-08-10T09:00:00.000Z',
-    description: 'Reservation start date and time',
+    description: `Reservation start: ${RESERVATION_DATE_TIME_FORMAT}`,
     format: 'date-time',
+    pattern: RESERVATION_DATE_TIME_PATTERN.source,
   })
-  @IsDateString()
+  @IsReservationDateTime()
   startTime!: string;
 
   @ApiProperty({
     example: '2026-08-10T11:00:00.000Z',
-    description: 'Reservation end date and time',
+    description: `Reservation end: ${RESERVATION_DATE_TIME_FORMAT}`,
     format: 'date-time',
+    pattern: RESERVATION_DATE_TIME_PATTERN.source,
   })
-  @IsDateString()
+  @IsReservationDateTime()
   endTime!: string;
 }

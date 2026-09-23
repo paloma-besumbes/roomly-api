@@ -73,6 +73,44 @@ describe('ReservationsService', () => {
   });
 
   describe('create', () => {
+    describe.each(['startTime', 'endTime'] as const)(
+      'invalid %s supplied directly to the service',
+      (field) => {
+        it.each([
+          '2026-W33-1',
+          '2026-02-30T10:00:00Z',
+          '2026-08-10',
+          '2026-08-10T10:00:00',
+          'not-a-date',
+        ])('rejects %s before any repository operation', async (value) => {
+          const result = service.create(
+            {
+              roomId: 'room-1',
+              startTime: '2026-08-10T10:00:00Z',
+              endTime: '2026-08-10T11:00:00Z',
+              [field]: value,
+            },
+            'user-1',
+          );
+
+          await expect(result).rejects.toBeInstanceOf(BadRequestException);
+          await expect(result).rejects.toMatchObject({
+            status: 400,
+          });
+          await expect(result).rejects.toThrow(
+            'must each be a valid ISO 8601 date-time',
+          );
+          expect(mockUsersRepository.findOne).not.toHaveBeenCalled();
+          expect(mockRoomsRepository.findOne).not.toHaveBeenCalled();
+          expect(
+            mockReservationsRepository.createQueryBuilder,
+          ).not.toHaveBeenCalled();
+          expect(mockReservationsRepository.create).not.toHaveBeenCalled();
+          expect(mockReservationsRepository.save).not.toHaveBeenCalled();
+        });
+      },
+    );
+
     it.each([
       {
         scenario: 'equal times',

@@ -20,6 +20,10 @@ import { Room } from '../rooms/room.entity';
 
 import { User } from '../users/entities/user.entity';
 import { UserRole } from '../users/entities/user-role.enum';
+import {
+  parseReservationDateTime,
+  RESERVATION_DATE_TIME_FORMAT,
+} from './validation/reservation-date-time.validator';
 
 @Injectable()
 export class ReservationsService {
@@ -38,8 +42,14 @@ export class ReservationsService {
     createReservationDto: CreateReservationDto,
     userId: string,
   ): Promise<ReservationResponseDto> {
-    const startTime = new Date(createReservationDto.startTime);
-    const endTime = new Date(createReservationDto.endTime);
+    const startTime = parseReservationDateTime(createReservationDto.startTime);
+    const endTime = parseReservationDateTime(createReservationDto.endTime);
+
+    if (!startTime || !endTime) {
+      throw new BadRequestException(
+        `startTime and endTime must each be ${RESERVATION_DATE_TIME_FORMAT}`,
+      );
+    }
 
     if (endTime.getTime() <= startTime.getTime()) {
       throw new BadRequestException('endTime must be later than startTime');
