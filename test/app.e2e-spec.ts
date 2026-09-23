@@ -172,6 +172,30 @@ describe('Roomly HTTP integration (repository doubles)', () => {
       .expect({ userId: user.id, email: user.email, role: user.role });
   });
 
+  it.each([
+    ['ASCII', 'a'.repeat(73)],
+    ['multibyte UTF-8', 'é'.repeat(37)],
+  ])(
+    'rejects an over-limit %s registration password before database access',
+    async (_label, password) => {
+      await request(app.getHttpServer())
+        .post('/api/users')
+        .send({
+          email: user.email,
+          firstName: 'Test',
+          lastName: 'User',
+          password,
+        })
+        .expect(400)
+        .expect({
+          statusCode: 400,
+          error: 'Bad Request',
+          message: ['password must not exceed 72 bytes in UTF-8'],
+        });
+      expect(usersRepository.findOne).not.toHaveBeenCalled();
+    },
+  );
+
   it('rejects an incorrect password through the real authentication service', () =>
     request(app.getHttpServer())
       .post('/api/auth/login')

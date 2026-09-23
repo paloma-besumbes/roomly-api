@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsString, MinLength } from 'class-validator';
+import { MaxUtf8ByteLength } from '../validation/max-utf8-byte-length.validator';
 
 export class CreateUserDto {
   @ApiProperty({
@@ -11,11 +12,13 @@ export class CreateUserDto {
 
   @ApiProperty({
     example: 'secret123',
-    description: 'Password with at least 8 characters',
+    description:
+      'Password with at least 8 characters and at most 72 UTF-8 bytes',
     minLength: 8,
   })
   @IsString()
   @MinLength(8)
+  @MaxUtf8ByteLength(72)
   password!: string;
 
   @ApiProperty({
