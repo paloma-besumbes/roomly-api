@@ -6,6 +6,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -16,6 +17,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
   Request,
   UseGuards,
@@ -83,6 +85,13 @@ export class ReservationsController {
   @ApiOperation({
     summary: 'Delete a reservation',
   })
+  @ApiParam({
+    name: 'id',
+    description: 'Reservation UUID',
+    type: String,
+    format: 'uuid',
+  })
+  @ApiBadRequestResponse({ description: 'Invalid reservation UUID' })
   @ApiOkResponse({
     description: 'Reservation deleted successfully; empty response body',
   })
@@ -95,7 +104,7 @@ export class ReservationsController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   remove(
-    @Param('id') reservationId: string,
+    @Param('id', ParseUUIDPipe) reservationId: string,
     @Request()
     req: AuthenticatedRequest,
   ) {

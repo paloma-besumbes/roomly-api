@@ -1,4 +1,9 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import {
+  ForbiddenException,
+  INestApplication,
+  NotFoundException,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
@@ -31,6 +36,7 @@ describe('Swagger response contracts', () => {
   let token: string;
   let adminToken: string;
   const secret = 'swagger-contract-test-secret';
+  const mockRemoveReservation = jest.fn().mockResolvedValue(undefined);
   const user = createMockUser({
     id: '550e8400-e29b-41d4-a716-446655440001',
   });
@@ -91,7 +97,7 @@ describe('Swagger response contracts', () => {
           useValue: {
             create: jest.fn().mockResolvedValue(reservation),
             findMyReservations: jest.fn().mockResolvedValue([reservation]),
-            remove: jest.fn().mockResolvedValue(undefined),
+            remove: mockRemoveReservation,
           },
         },
       ],
@@ -392,10 +398,82 @@ describe('Swagger response contracts', () => {
       .auth(token, { type: 'bearer' })
       .expect(200);
     expect(response.text).toBe('');
+    expect(mockRemoveReservation).toHaveBeenCalledTimes(1);
+    expect(mockRemoveReservation).toHaveBeenCalledWith(
+      reservation.id,
+      user.id,
+      user.role,
+    );
     const documented =
       document.paths['/api/reservations/{id}'].delete!.responses['200'];
     expect(documented).not.toHaveProperty('content');
   });
+
+  it('documents the deletion ID as a required UUID', () => {
+    expect(document.paths['/api/reservations/{id}'].delete!.parameters).toEqual(
+      [
+        {
+          name: 'id',
+          in: 'path',
+          required: true,
+          description: 'Reservation UUID',
+          schema: { type: 'string', format: 'uuid' },
+        },
+      ],
+    );
+  });
+
+  it.each(['not-a-uuid', '550e8400-e29b-41d4-a716-44665544000g'])(
+    'rejects malformed deletion ID %s before calling the service',
+    async (id) => {
+      await request(app.getHttpServer())
+        .delete(`/api/reservations/${id}`)
+        .auth(token, { type: 'bearer' })
+        .expect(400, {
+          statusCode: 400,
+          error: 'Bad Request',
+          message: 'Validation failed (uuid is expected)',
+        });
+      expect(mockRemoveReservation).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([reservation.id, 'not-a-uuid'])(
+    'preserves 401 for unauthenticated deletion of %s',
+    async (id) => {
+      await request(app.getHttpServer())
+        .delete(`/api/reservations/${id}`)
+        .expect(401);
+      expect(mockRemoveReservation).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    [
+      403,
+      new ForbiddenException('You are not allowed to delete this reservation'),
+    ],
+    [404, new NotFoundException('Reservation not found')],
+  ] as const)(
+    'preserves service HTTP %s errors for a valid deletion UUID',
+    async (status, error) => {
+      mockRemoveReservation.mockRejectedValueOnce(error);
+      await request(app.getHttpServer())
+        .delete(`/api/reservations/${reservation.id}`)
+        .auth(token, { type: 'bearer' })
+        .expect(status)
+        .expect({
+          statusCode: status,
+          message: error.message,
+          error: status === 403 ? 'Forbidden' : 'Not Found',
+        });
+      expect(mockRemoveReservation).toHaveBeenCalledWith(
+        reservation.id,
+        user.id,
+        user.role,
+      );
+    },
+  );
 
   it('preserves authentication and documents the implemented error statuses', async () => {
     await request(app.getHttpServer()).get('/api/users/me').expect(401);
@@ -417,6 +495,6 @@ describe('Swagger response contracts', () => {
       Object.keys(
         document.paths['/api/reservations/{id}'].delete!.responses,
       ).sort(),
-    ).toEqual(['200', '401', '403', '404']);
+    ).toEqual(['200', '400', '401', '403', '404']);
   });
 });

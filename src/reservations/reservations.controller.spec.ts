@@ -111,10 +111,11 @@ describe('ReservationsController', () => {
 
       mockReservationsService.remove.mockResolvedValue(undefined);
 
-      const result = await controller.remove('reservation-1', req);
+      const reservationId = '550e8400-e29b-41d4-a716-446655440003';
+      const result = await controller.remove(reservationId, req);
 
       expect(mockReservationsService.remove).toHaveBeenCalledWith(
-        'reservation-1',
+        reservationId,
         user.id,
         user.role,
       );
